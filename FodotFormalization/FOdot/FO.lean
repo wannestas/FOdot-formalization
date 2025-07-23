@@ -20,6 +20,20 @@ namespace Extensional
     TermExtensions    : TermExtensions
     FormulaExtensions : FormulaExtensions
 
+-- Ungodly coercion rules that will most likely destroy the universe and all efficiency of the Lean 4 system, but they make
+-- writing formulas nicer :3
+  instance {α: Type} {β}: Coe α (α ⊕ β) where
+    coe := Sum.inl
+
+  instance {α: Type} {β: Type}: Coe β (α ⊕ β) where
+    coe := Sum.inr
+
+  instance {α: Type}: Coe α (Unit × α) where
+    coe := (Prod.mk () ·)
+
+  instance {α β: Type}: Coe (β × α) (α × β) where
+    coe := Prod.swap
+
 
   structure Domain where
     -- Ideally a Domain would be modelled as disjunct union of a list of types, but I don't know how to do this
@@ -33,14 +47,19 @@ namespace Extensional
   structure Context where
     Domain: Domain
     Extensions : Extensions
-    PropVars: Type
+    -- PropVars: Type
 
   inductive TermX {ctx : Context} where
   -- Save me lord how can I name these things locally so as not to need the entire hierarchy
   | Object (ext : ctx.Extensions.TermExtensions.XObject) (name : String)
   | Variable (ext : ctx.Extensions.TermExtensions.XVariable) (name : String)
   | FuncApplication (ext : ctx.Extensions.TermExtensions.XFuncApplication) (name : String) (arguments : List (TermX (ctx := ctx)))
+  -- AAAAAAAAH these constructors don't have access to the ctx variable, but this is necessary probably
   | Other (ext :ctx.Extensions.TermExtensions.XOtherTerm)
+
+  instance (ctx : Context) : Coe ctx.Extensions.TermExtensions.XOtherTerm (TermX (ctx := ctx)) where
+    coe := TermX.Other
+
 
   inductive FormulaX {ctx: Context} where
   | PredApplication (ext : ctx.Extensions.FormulaExtensions.XPredApplication) (name : String) (arguments : List (TermX (ctx := ctx)))
@@ -50,19 +69,22 @@ namespace Extensional
   | Quantification (ext : ctx.Extensions.FormulaExtensions.XQuantification) (name : String) (φ : FormulaX (ctx := ctx))
   | Other (ext : ctx.Extensions.FormulaExtensions.XOtherFormula)
 
+  instance (ctx : Context) : Coe ctx.Extensions.FormulaExtensions.XOtherFormula (FormulaX (ctx := ctx)) where
+    coe := FormulaX.Other
+
 end Extensional
 
 namespace FO
   open Extensional
 
-  def PlainFOTerms : TermExtensions :=
+  abbrev PlainFOTerms : TermExtensions :=
   { XObject           := Unit
   , XVariable         := Unit
   , XFuncApplication  := Unit
   , XOtherTerm        := Empty
   }
 
-  def PlainFOFormulas : FormulaExtensions :=
+  abbrev PlainFOFormulas : FormulaExtensions :=
   { XPredApplication  := Unit
   , XEquality         := Unit
   , XNegation         := Unit
@@ -71,7 +93,7 @@ namespace FO
   , XOtherFormula     := Empty
   }
 
-  def PlainFO : Extensions :=
+  abbrev PlainFO : Extensions :=
   { TermExtensions := PlainFOTerms
   , FormulaExtensions := PlainFOFormulas
   }

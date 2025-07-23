@@ -40,8 +40,21 @@ namespace Extensible
   instance (exts : Extensions) : Coe exts.XOther (ExpX (exts := exts)) where
     coe := Other
 
+  instance {α: Type} {β}: Coe α (α ⊕ β) where
+    coe := Sum.inl
+
+  instance {α: Type} {β: Type}: Coe β (α ⊕ β) where
+    coe := Sum.inr
+
+  instance {α: Type}: Coe α (Unit × α) where
+    coe := (Prod.mk () ·)
+
+  instance {α β: Type}: Coe (β × α) (α × β) where
+    coe := Prod.swap
+
+
   -- Example of no extension at all
-  def PlainExtensions : Extensions :=
+  abbrev PlainExtensions : Extensions :=
   { XLiteral := Unit
   , XVariable := Unit
   , XLambdaArrow := Unit
@@ -59,15 +72,15 @@ namespace Extensible
   | Number (n : ℕ)
   open TypeInfo
 
-  def TypedExtensions : Extensions :=
-  { XLiteral := TypeInfo
-  , XVariable := TypeInfo
-  , XLambdaArrow := TypeInfo
-  , XApplication := TypeInfo
-  , XOther := Empty
+  abbrev TypedExtensions (base: Extensions): Extensions :=
+  { XLiteral := TypeInfo × base.XLiteral
+  , XVariable := TypeInfo × base.XVariable
+  , XLambdaArrow := TypeInfo × base.XLambdaArrow
+  , XApplication := TypeInfo × base.XApplication
+  , XOther := base.XOther
   }
 
-  abbrev TypedExp := ExpX (exts := TypedExtensions)
+  abbrev TypedExp := ExpX (exts := TypedExtensions PlainExtensions)
 
   def exampleTyped: TypedExp := Application (WellTyped) (LambdaArrow (WellTyped) "x" (Variable (BadlyTyped) "x")) (Literal (Number 5) 5)
 
@@ -80,22 +93,15 @@ namespace Extensible
   inductive Error where
   | SyntaxError (errorStart errorEnd : ℕ) (name : String)
 
-  def BuiltinResolvedExtensions (defaultExt : Extensions) : Extensions :=
+  abbrev BuiltinResolvedExtensions (defaultExt : Extensions) : Extensions :=
   { XLiteral := defaultExt.XLiteral
   , XVariable := defaultExt.XVariable
   , XLambdaArrow := defaultExt.XLambdaArrow
   , XApplication := defaultExt.XApplication
-  , XOther := Builtin ⊕ Error
+  , XOther := defaultExt.XOther ⊕ Builtin ⊕ Error
   }
 
-  -- Coercion so we don't need to do the stupid `Sum.inl` every time we want to construct a Builtin or Other node
-  instance : Coe Builtin ((BuiltinResolvedExtensions TypedExtensions).XOther) where
-    coe := Sum.inl
-
-  instance : Coe Error ((BuiltinResolvedExtensions TypedExtensions).XOther) where
-    coe := Sum.inr
-
-  abbrev BuiltinExp := ExpX (exts := BuiltinResolvedExtensions TypedExtensions)
+  abbrev BuiltinExp := ExpX (exts := BuiltinResolvedExtensions (TypedExtensions PlainExtensions))
 
   def exampleBuiltin: BuiltinExp := Application (WellTyped) (LambdaArrow (WellTyped) "x" (Variable (BadlyTyped) "x")) (Error.SyntaxError 1 4 "gaming")
 

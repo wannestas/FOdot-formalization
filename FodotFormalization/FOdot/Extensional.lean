@@ -18,22 +18,23 @@ namespace Extensional
   structure SymbolDeclarationExtensions where
     XPredicate  : Type
     XFunction   : Type
-    XOther      : Type
+    XOther      : Nat → Type
 
   structure VocabularyExtensions where
     SymbolDeclarationExtensions : SymbolDeclarationExtensions
 
-  inductive SymbolDeclarationX (exts : SymbolDeclarationExtensions) where
-  | Predicate (ext : exts.XPredicate) (name : String) (arity : Nat)
-  | Function  (ext : exts.XFunction)  (name : String) (arity : Nat)
-  | Other     (ext : exts.XOther)
+  inductive SymbolDeclarationX (exts : SymbolDeclarationExtensions) : Nat → Type where
+  | Predicate (ext : exts.XPredicate) (name : String) (arity : Nat) : SymbolDeclarationX exts arity
+  | Function  (ext : exts.XFunction)  (name : String) (arity : Nat) : SymbolDeclarationX exts arity
+  | Other     {arity : Nat} (ext : exts.XOther arity) : SymbolDeclarationX exts arity
 
-  instance (exts : SymbolDeclarationExtensions) : Coe (exts.XOther) (SymbolDeclarationX exts) where
+  instance {arity : Nat} (exts : SymbolDeclarationExtensions) : Coe (exts.XOther arity) (SymbolDeclarationX exts arity) where
     coe := SymbolDeclarationX.Other
 
   structure Vocabulary (exts : VocabularyExtensions) where
     Domain : Domain
-    SymbolDeclarations  : Finset (SymbolDeclarationX exts.SymbolDeclarationExtensions)
+    -- YUCKY
+    SymbolDeclarations  : Finset ((n : Nat) × SymbolDeclarationX exts.SymbolDeclarationExtensions n)
 
   structure TermExtensions (exts : VocabularyExtensions) where
     XObject           : Type
@@ -73,9 +74,14 @@ namespace Extensional
     Extensions            : Extensions VocabularyExtensions
 
   inductive TermX {vocExts : VocabularyExtensions} (voc : Vocabulary vocExts) (exts : TermExtensions vocExts) where
-  -- Save me lord how can I name these things locally so as not to need the entire hierarchy
   | Object (ext : exts.XObject) (name : String)
   | Variable (ext : exts.XVariable) (name : String)
+  -- This shouldn't be a string but... it should be a reference to a SymbolDeclaration in voc? I'm also now realizing
+  -- the symboldeclaration type might need to be split into separate type because this would allow the reference to be to a predicate while we mean a function
+  -- Alternatively we could throw away the entire split between the two, merge Terms and Formulas and index them on their "return" type?
+  -- idk that also sounds kinda scuffed because you can't change existing constructors
+  -- Actually, this might be possible if you extend the original constructor with `Empty` and create a new constructor that you modified, extended with
+  -- the original extensions? That's kinda cursed as fuck though
   | FuncApplication (ext : exts.XFuncApplication) (name : String) (arguments : List (TermX voc exts))
   | Other (ext :exts.XOtherTerm voc)
 

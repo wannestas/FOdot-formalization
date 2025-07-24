@@ -3,23 +3,33 @@ import FodotFormalization.FOdot.Extensional
 namespace FO
   open Extensional
 
-  abbrev PlainFOTerms : TermExtensions :=
+  abbrev PlainFOSymbolDeclarations : SymbolDeclarationExtensions :=
+  { XPredicate  := Unit
+  , XFunction   := Unit
+  , XOther      := Empty
+  }
+
+  abbrev PlainFOVoc : VocabularyExtensions :=
+  { SymbolDeclarationExtensions := PlainFOSymbolDeclarations
+  }
+
+  abbrev PlainFOTerms : TermExtensions PlainFOVoc :=
   { XObject           := Unit
   , XVariable         := Unit
   , XFuncApplication  := Unit
-  , XOtherTerm        := Empty
+  , XOtherTerm        := λ _ => Empty
   }
 
-  abbrev PlainFOFormulas : FormulaExtensions :=
+  abbrev PlainFOFormulas : FormulaExtensions PlainFOVoc :=
   { XPredApplication  := Unit
   , XEquality         := Unit
   , XNegation         := Unit
   , XAnd              := Unit
   , XQuantification   := Unit
-  , XOtherFormula     := Empty
+  , XOtherFormula     := λ _ => Empty
   }
 
-  abbrev PlainFO : Extensions :=
+  abbrev PlainFO : Extensions PlainFOVoc :=
   { TermExtensions := PlainFOTerms
   , FormulaExtensions := PlainFOFormulas
   }

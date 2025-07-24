@@ -4,23 +4,28 @@ import FodotFormalization.FOdot.FO
 namespace FOsugar
   open Extensional
 
-  abbrev SugarFOTerms (base: Extensions) : TermExtensions :=
-  { XObject           := base.TermExtensions.XObject
-  , XVariable         := base.TermExtensions.XVariable
-  , XFuncApplication  := base.TermExtensions.XFuncApplication
-  , XOtherTerm        := base.TermExtensions.XOtherTerm
+
+  abbrev SugarFOSymbolDeclarations (base: SymbolDeclarationExtensions) : SymbolDeclarationExtensions
+  := base
+
+  abbrev SugarFOVoc (base : VocabularyExtensions) : VocabularyExtensions :=
+  { SymbolDeclarationExtensions := SugarFOSymbolDeclarations base.SymbolDeclarationExtensions
   }
 
-  inductive SugarFormulas {ctx: Context} where
-  | Or (φ₁ φ₂ : FormulaX (ctx := ctx))
+  abbrev SugarFOTerms {baseVoc : VocabularyExtensions} (base: Extensions baseVoc) : TermExtensions (SugarFOVoc baseVoc)
+  := base.TermExtensions
 
-  abbrev SugarFOFormulas (base: Extensions) : FormulaExtensions :=
-  { XPredApplication  := base.FormulaExtensions.XPredApplication
-  , XEquality         := base.FormulaExtensions.XEquality
-  , XNegation         := base.FormulaExtensions.XNegation
-  , XAnd              := base.FormulaExtensions.XAnd
-  , XQuantification   := base.FormulaExtensions.XQuantification
-  , XOtherFormula     := SugarFormulas ⊕ base.FormulaExtensions.XOtherFormula
+  inductive SugarFormulas {vocExts : VocabularyExtensions} (voc : Vocabulary vocExts) (exts: Extensions vocExts) where
+  | Or (φ₁ φ₂ : FormulaX voc exts)
+
+  abbrev SugarFOFormulas {baseVoc : VocabularyExtensions} (base: Extensions baseVoc) : FormulaExtensions (SugarFOVoc baseVoc)
+  :=  {base.FormulaExtensions with
+        XOtherFormula := λ voc => ((SugarFormulas voc base) ⊕ base.FormulaExtensions.XOtherFormula voc)
+      }
+
+  abbrev SugarFO {baseVoc : VocabularyExtensions} (base : Extensions baseVoc): Extensions (SugarFOVoc baseVoc) :=
+  { TermExtensions := SugarFOTerms base
+  , FormulaExtensions := SugarFOFormulas base
   }
 
 end FOsugar

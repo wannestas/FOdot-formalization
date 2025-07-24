@@ -14,27 +14,25 @@ namespace Extensional
     Fintype: Fintype Types
     DecidableEq: DecidableEq Types
 
-
-  structure SymbolDeclarationExtensions where
-    XPredicate  : Type
-    XFunction   : Type
-    XOther      : Nat → Type
-
   structure VocabularyExtensions where
-    SymbolDeclarationExtensions : SymbolDeclarationExtensions
+    XFunctionDeclaration  : Type
+    XPredicateDeclaration : Type
+    XOther                : Type
 
-  inductive SymbolDeclarationX (exts : SymbolDeclarationExtensions) : Nat → Type where
-  | Predicate (ext : exts.XPredicate) (name : String) (arity : Nat) : SymbolDeclarationX exts arity
-  | Function  (ext : exts.XFunction)  (name : String) (arity : Nat) : SymbolDeclarationX exts arity
-  | Other     {arity : Nat} (ext : exts.XOther arity) : SymbolDeclarationX exts arity
+  structure FunctionDeclaration (ext : VocabularyExtensions) (arity : Nat) where
+    Name : String
+    Other : ext.XFunctionDeclaration
 
-  instance {arity : Nat} (exts : SymbolDeclarationExtensions) : Coe (exts.XOther arity) (SymbolDeclarationX exts arity) where
-    coe := SymbolDeclarationX.Other
+  structure PredicateDeclaration (ext : VocabularyExtensions) (arity : Nat) where
+    Name : String
+    Other : ext.XPredicateDeclaration
 
   structure Vocabulary (exts : VocabularyExtensions) where
-    Domain : Domain
-    -- YUCKY
-    SymbolDeclarations  : Finset ((n : Nat) × SymbolDeclarationX exts.SymbolDeclarationExtensions n)
+    Domain      : Domain
+    -- Not in love with this encoding
+    Functions   : Finset ((n : Nat) × PredicateDeclaration exts n)
+    Predicates  : Finset ((n : Nat) × FunctionDeclaration exts n)
+    Other       : exts.XOther
 
   structure TermExtensions (exts : VocabularyExtensions) where
     XObject           : Type
@@ -73,6 +71,9 @@ namespace Extensional
     Vocabulary            : Vocabulary VocabularyExtensions
     Extensions            : Extensions VocabularyExtensions
 
+-- Shut the fuck up bro I don't care that it's coinductive I don't know how else I would model it!!!!
+-- A function application has a declaration of arity n and a vector of arguments of length n ! What the fuck do you want
+-- from me
   inductive TermX {vocExts : VocabularyExtensions} (voc : Vocabulary vocExts) (exts : TermExtensions vocExts) where
   | Object (ext : exts.XObject) (name : String)
   | Variable (ext : exts.XVariable) (name : String)
@@ -82,7 +83,7 @@ namespace Extensional
   -- idk that also sounds kinda scuffed because you can't change existing constructors
   -- Actually, this might be possible if you extend the original constructor with `Empty` and create a new constructor that you modified, extended with
   -- the original extensions? That's kinda cursed as fuck though
-  | FuncApplication (ext : exts.XFuncApplication) (name : String) (arguments : List (TermX voc exts))
+  | FuncApplication {arity : Nat} (ext : exts.XFuncApplication) (decl : FunctionDeclaration vocExts arity) (arguments : Vector (TermX voc exts) arity)
   | Other (ext :exts.XOtherTerm voc)
 
   instance (ctx : Context) : Coe (ctx.Extensions.TermExtensions.XOtherTerm ctx.Vocabulary) (TermX (voc := ctx.Vocabulary) (exts := ctx.Extensions.TermExtensions)) where
